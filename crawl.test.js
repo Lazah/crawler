@@ -1,5 +1,5 @@
 import { test, expect } from "@jest/globals";
-import { normalizeURL } from "./crawl.js";
+import { normalizeURL, getURLsFromHTML } from "./crawl.js";
 
 test("URL with only FQDN", () => {
     expect(normalizeURL("homelinux.fi")).toBe(null);
@@ -29,4 +29,51 @@ test("URL with query & path", () => {
     expect(normalizeURL("https://homelinux.fi/page2/section3?query=something")).toBe(
         "homelinux.fi/page2/section3?query=something"
     );
+});
+
+test("body with single absolute anchor", () => {
+    expect(
+        getURLsFromHTML(
+            `<!DOCTYPE html>
+<html>
+</head>
+<title>test page</title>
+<body>
+<a href="https://homelinux.fi/page2">tosi jännää</a>
+</body>
+</html>`,
+            "https://homelinux.fi"
+        )
+    ).toStrictEqual(["https://homelinux.fi/page2"]);
+});
+test("body with single relative anchor", () => {
+    expect(
+        getURLsFromHTML(
+            `<!DOCTYPE html>
+<html>
+</head>
+<title>test page</title>
+<body>
+<a href="/page3">tosi jännää</a>
+</body>
+</html>`,
+            "https://homelinux.fi"
+        )
+    ).toStrictEqual(["https://homelinux.fi/page3"]);
+});
+test("body with absolute & relative anchor", () => {
+    expect(
+        getURLsFromHTML(
+            `<!DOCTYPE html>
+<html>
+</head>
+<title>test page</title>
+<body>
+<a href="https://homelinux.fi/page4">tosi jännää</a>
+<a href="/page5">tosi jännää</a>
+</body>
+</html>`,
+            "https://homelinux.fi"
+        )
+    ).toStrictEqual(["https://homelinux.fi/page4", "https://homelinux.fi/page5"]);
 });
