@@ -1,5 +1,6 @@
 import { argv } from "node:process";
 import { crawlPage } from "./crawl.js";
+import { printReport } from "./report.js";
 function main() {
     if (argv.length < 3) {
         console.log("ERROR: program needs one argument");
@@ -13,7 +14,7 @@ function main() {
     console.log("Starting web crawling from " + baseURL);
     crawlPage(baseURL)
         .then((val) => {
-            console.log(JSON.stringify(val));
+            printReport(val);
         })
         .catch((msg) => {
             console.log(`page crawling failed with message: ${msg}`);
