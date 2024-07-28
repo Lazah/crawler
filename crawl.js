@@ -1,24 +1,11 @@
 import { JSDOM } from "jsdom";
 function normalizeURL(url) {
-    let finalUrl;
-    try {
-        const urlObj = new URL(url);
-        finalUrl = urlObj.hostname;
-        if (urlObj.port !== "") {
-            finalUrl += `:${urlObj.port}`;
-        }
-        if (urlObj.pathname !== "/") {
-            finalUrl += urlObj.pathname;
-        }
-        if (urlObj.search !== "") {
-            finalUrl += urlObj.search;
-        }
-    } catch (err) {
-        console.log(`an error occured while parsing the url: ${err.message}`);
-        finalUrl = null;
+    const urlObj = new URL(url);
+    let fullPath = `${urlObj.host}${urlObj.pathname}`;
+    if (fullPath.endsWith("/")) {
+        fullPath = fullPath.slice(0, -1);
     }
-
-    return finalUrl;
+    return fullPath;
 }
 
 function getURLsFromHTML(body, baseURL) {
@@ -44,30 +31,53 @@ function getURLsFromHTML(body, baseURL) {
     return returnValues;
 }
 
-async function crawlPage(url) {
-    let urlObj;
+async function crawlPage(baseUrl, currentUrl = baseUrl, pages = {}) {
+    let curUrlObj;
+    let baseUrlObj;
     try {
-        urlObj = new URL(url);
-        console.log(`crawling page ${urlObj.href}`);
-        const resp = await fetch(urlObj, {
+        curUrlObj = new URL(currentUrl);
+        baseUrlObj = new URL(baseUrl);
+        console.log(`crawling page ${curUrlObj.href}`);
+        if (curUrlObj.hostname !== baseUrlObj.hostname) {
+            return pages;
+        }
+        const curUrlText = normalizeURL(curUrlObj);
+        if (pages[curUrlText] !== undefined) {
+            pages[curUrlText]++;
+            return pages;
+        }
+        pages[curUrlText] = 1;
+        const anchors = await getPageLinks(baseUrlObj, curUrlObj);
+        for (const url of anchors) {
+            pages = await crawlPage(baseUrlObj, url, pages);
+        }
+    } catch (error) {
+        console.log(`an error occured while crawling page '${curUrlObj.href}': ${error.message}`);
+    }
+    return pages;
+}
+async function getPageLinks(baseUrl, currUrl) {
+    let resp;
+    try {
+        console.log(`fetching page '${currUrl.href}'`);
+        resp = await fetch(currUrl, {
             method: "GET",
         });
-        let status = resp.status;
-        let content = await resp.text();
-        let contenType = resp.headers.get("Content-Type");
-
-        if (status >= 400) {
-            console.log(`request failed with code '${resp.status}' and message ${resp.statusText}`);
-            return;
-        }
-        if (!contenType.includes("text/html")) {
-            console.log("returned content was not a HTML page: " + contenType);
-            return;
-        }
-        console.log(content);
     } catch (error) {
-        console.log(`an error occured while getting page from '${urlObj.href}': ${error.message}`);
+        console.log(`an error occured while fetching page '${currUrl.href}': ${error.message}`);
+        return [];
     }
+    const contenType = resp.headers.get("Content-Type");
+
+    if (resp.status >= 400) {
+        console.log(`request failed with code '${resp.status}' and message ${resp.statusText}`);
+        return [];
+    }
+    if (!contenType.includes("text/html")) {
+        console.log("returned content was not a HTML page: " + contenType);
+        return [];
+    }
+    return getURLsFromHTML(await resp.text(), `${baseUrl.protocol}//${baseUrl.host}`);
 }
 
 export { normalizeURL, getURLsFromHTML, crawlPage };
