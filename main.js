@@ -1,4 +1,5 @@
 import { argv } from "node:process";
+import { crawlPage } from "./crawl.js";
 function main() {
     if (argv.length < 3) {
         console.log("ERROR: program needs one argument");
@@ -10,6 +11,7 @@ function main() {
     }
     const baseURL = argv[2];
     console.log("Starting web crawling from " + baseURL);
+    crawlPage(baseURL);
 }
 
 main();

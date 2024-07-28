@@ -44,4 +44,30 @@ function getURLsFromHTML(body, baseURL) {
     return returnValues;
 }
 
-export { normalizeURL, getURLsFromHTML };
+async function crawlPage(url) {
+    let urlObj;
+    try {
+        urlObj = new URL(url);
+        console.log(`crawling page ${urlObj.href}`);
+        const resp = await fetch(urlObj, {
+            method: "GET",
+        });
+        let status = resp.status;
+        let content = await resp.text();
+        let contenType = resp.headers.get("Content-Type");
+
+        if (status >= 400) {
+            console.log(`request failed with code '${resp.status}' and message ${resp.statusText}`);
+            return;
+        }
+        if (!contenType.includes("text/html")) {
+            console.log("returned content was not a HTML page: " + contenType);
+            return;
+        }
+        console.log(content);
+    } catch (error) {
+        console.log(`an error occured while getting page from '${urlObj.href}': ${error.message}`);
+    }
+}
+
+export { normalizeURL, getURLsFromHTML, crawlPage };
